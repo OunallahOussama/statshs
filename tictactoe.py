@@ -5,57 +5,85 @@ import tkinter as tk
 from tkinter import messagebox, simpledialog, scrolledtext
 import socket
 import threading
-import time  # Import time for splash screen delay
+import time
+
 
 class TicTacToeEnhanced:
+    """Enhanced Tic Tac Toe game with GUI, AI, and online multiplayer."""
+
     def __init__(self, master):
         """Initialize the Tic Tac Toe game with GUI and game logic."""
         print("Initializing Tic Tac Toe Enhanced...")
         self.master = master
         self.master.title("Tic Tac Toe - Enhanced Edition")
         self.master.configure(bg="#1e1e2f")
+
+        # Game state variables
         self.board = ['' for _ in range(9)]
         self.buttons = []
         self.current_player = "X"
         self.player_names = {'X': "Player 1", 'O': "Player 2"}
         self.scores = {'X': 0, 'O': 0, 'Tie': 0}
         self.mode = tk.StringVar(value="PvP")
+
+        # Networking variables
         self.connection = None
+        self.is_host = False
+
+        # Chat variables
         self.chat_box = None
         self.chat_entry = None
-        self.is_host = False
+
+        # UI setup
         self.setup_ui()
+
+        # Prompt for host or client if in Online mode
+        if self.mode.get() == "Online":
+            self.prompt_host_or_client()
+
+    # -------------------- UI Setup --------------------
 
     def setup_ui(self):
         """Set up the user interface for the game."""
         print("Setting up the UI...")
+
+        # Mode selection
         mode_frame = tk.Frame(self.master, bg="#1e1e2f")
         mode_frame.pack(pady=10)
         for mode in ["PvP", "PvAI", "Online"]:
-            tk.Radiobutton(mode_frame, text=mode, variable=self.mode, value=mode, command=self.reset_board,
-                           bg="#1e1e2f", fg="white", selectcolor="#2e2e4d").pack(side=tk.LEFT, padx=10)
+            tk.Radiobutton(
+                mode_frame, text=mode, variable=self.mode, value=mode,
+                command=self.reset_board, bg="#1e1e2f", fg="white", selectcolor="#2e2e4d"
+            ).pack(side=tk.LEFT, padx=10)
 
+        # Player name inputs
         name_frame = tk.Frame(self.master, bg="#1e1e2f")
         name_frame.pack()
         self.name_vars = {'X': tk.StringVar(value="Player 1"), 'O': tk.StringVar(value="Player 2")}
         tk.Entry(name_frame, textvariable=self.name_vars['X'], width=15).pack(side=tk.LEFT, padx=10)
         tk.Entry(name_frame, textvariable=self.name_vars['O'], width=15).pack(side=tk.LEFT, padx=10)
 
+        # Game board
         self.board_frame = tk.Frame(self.master, bg="#1e1e2f")
         self.board_frame.pack()
         for i in range(9):
-            b = tk.Button(self.board_frame, text='', font=('Helvetica', 24, 'bold'), width=5, height=2,
-                          bg="#2e2e4d", fg="white", command=lambda i=i: self.make_move(i))
-            b.grid(row=i//3, column=i%3, padx=5, pady=5)
+            b = tk.Button(
+                self.board_frame, text='', font=('Helvetica', 24, 'bold'), width=5, height=2,
+                bg="#2e2e4d", fg="white", command=lambda i=i: self.make_move(i)
+            )
+            b.grid(row=i // 3, column=i % 3, padx=5, pady=5)
             self.buttons.append(b)
 
+        # Score display
         self.score_label = tk.Label(self.master, text="", font=("Arial", 14), fg="white", bg="#1e1e2f")
         self.score_label.pack(pady=5)
 
+        # Control buttons
         control_frame = tk.Frame(self.master, bg="#1e1e2f")
         control_frame.pack()
         tk.Button(control_frame, text="Reset", command=self.reset_board, bg="#444", fg="white").pack(side=tk.LEFT, padx=10)
 
+        # Chat box and entry
         self.chat_box = scrolledtext.ScrolledText(self.master, height=6, state='disabled', bg="#111", fg="lime", font=("Courier", 10))
         self.chat_entry = tk.Entry(self.master, bg="black", fg="lime")
         self.chat_entry.bind("<Return>", self.send_chat)
@@ -67,8 +95,12 @@ class TicTacToeEnhanced:
     def update_score(self):
         """Update the score display."""
         print("Updating scores...")
-        self.score_label.config(text=f"{self.name_vars['X'].get()} (X): {self.scores['X']} | "
-                                     f"{self.name_vars['O'].get()} (O): {self.scores['O']} | Ties: {self.scores['Tie']}")
+        self.score_label.config(
+            text=f"{self.name_vars['X'].get()} (X): {self.scores['X']} | "
+                 f"{self.name_vars['O'].get()} (O): {self.scores['O']} | Ties: {self.scores['Tie']}"
+        )
+
+    # -------------------- Game Logic --------------------
 
     def reset_board(self):
         """Reset the game board for a new game."""
@@ -79,6 +111,7 @@ class TicTacToeEnhanced:
             btn.config(text='', bg="#2e2e4d")
         if self.mode.get() == "Online":
             print("Setting up network for online mode...")
+            self.prompt_host_or_client()
             threading.Thread(target=self.setup_network, daemon=True).start()
 
     def make_move(self, index):
@@ -120,12 +153,12 @@ class TicTacToeEnhanced:
     def check_winner(self):
         """Check if there is a winner."""
         print("Checking for a winner...")
-        wins = [(0,1,2), (3,4,5), (6,7,8),
-                (0,3,6), (1,4,7), (2,5,8),
-                (0,4,8), (2,4,6)]
-        for a,b,c in wins:
+        wins = [(0, 1, 2), (3, 4, 5), (6, 7, 8),
+                (0, 3, 6), (1, 4, 7), (2, 5, 8),
+                (0, 4, 8), (2, 4, 6)]
+        for a, b, c in wins:
             if self.board[a] == self.board[b] == self.board[c] and self.board[a] != '':
-                for i in [a,b,c]:
+                for i in [a, b, c]:
                     self.buttons[i].config(bg="#ffcc00")
                 return True
         return False
@@ -138,32 +171,57 @@ class TicTacToeEnhanced:
                 self.make_move(i)
                 break
 
+    # -------------------- Networking --------------------
+
     def setup_network(self):
         """Set up the network connection for online mode."""
         print("Setting up network...")
-        if self.connection:
-            self.connection.close()
-        self.is_host = messagebox.askyesno("Online Mode", "Are you the host?")
         if self.is_host:
-            print("Hosting the game...")
-            server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server.bind(("", 12345))
-            server.listen(1)
-            self.log_chat("Waiting for connection...")
-            self.connection, _ = server.accept()
-            self.log_chat("Player connected.")
-            threading.Thread(target=self.receive_data, daemon=True).start()
+            host_ip = socket.gethostbyname(socket.gethostname())
+            print(f"Host IP: {host_ip}")
+            messagebox.showinfo("Host Information", f"Your IP address is: {host_ip}\nShare this with your opponent.")
+            threading.Thread(target=self.start_server, daemon=True).start()
         else:
-            ip = simpledialog.askstring("Connect", "Enter host IP:")
-            try:
-                print(f"Connecting to host at {ip}...")
-                self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self.connection.connect((ip, 12345))
-                threading.Thread(target=self.receive_data, daemon=True).start()
-                self.log_chat("Connected to server.")
-            except:
-                print("Connection failed.")
-                messagebox.showerror("Connection Failed", "Unable to connect.")
+            self.master.after(0, self.ask_for_ip)
+
+    def start_server(self):
+        """Start the server to listen for incoming connections."""
+        try:
+            self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            host_ip = socket.gethostbyname(socket.gethostname())
+            self.connection.bind((host_ip, 12345))
+            self.connection.listen(1)
+            print(f"Server started on {host_ip}:12345. Waiting for opponent to connect...")
+            self.log_chat(f"Server started on {host_ip}:12345. Waiting for opponent to connect...")
+            conn, addr = self.connection.accept()
+            print(f"Opponent connected from {addr}")
+            self.connection = conn
+            self.log_chat(f"Opponent connected from {addr}")
+            threading.Thread(target=self.receive_data, daemon=True).start()
+        except Exception as e:
+            print(f"Error starting server: {e}")
+            self.log_chat("Failed to start server.")
+            messagebox.showerror("Server Error", "Failed to start server.")
+
+    def ask_for_ip(self):
+        """Prompt the user to enter the host IP."""
+        ip = simpledialog.askstring("Connect", "Enter host IP:")
+        if ip:
+            print(f"Host IP entered: {ip}")
+            self.connect_to_host(ip)
+
+    def connect_to_host(self, ip):
+        """Connect to the host using the provided IP address."""
+        try:
+            self.connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.connection.connect((ip, 12345))
+            print(f"Connected to host at {ip}:12345.")
+            self.log_chat(f"Connected to host at {ip}:12345.")
+            threading.Thread(target=self.receive_data, daemon=True).start()
+        except Exception as e:
+            print(f"Error connecting to host: {e}")
+            self.log_chat("Failed to connect to host.")
+            messagebox.showerror("Connection Error", "Failed to connect to host.")
 
     def send_move(self, index):
         """Send the player's move to the opponent."""
@@ -173,27 +231,6 @@ class TicTacToeEnhanced:
         except:
             print("Failed to send move. Connection lost.")
             self.log_chat("Connection lost.")
-
-    def send_chat(self, event):
-        """Send a chat message to the opponent."""
-        msg = self.chat_entry.get()
-        if msg and self.connection:
-            try:
-                print(f"Sending chat message: {msg}")
-                self.connection.send(f"CHAT:{msg}".encode())
-                self.log_chat(f"You: {msg}")
-                self.chat_entry.delete(0, tk.END)
-            except:
-                print("Failed to send chat message.")
-                self.log_chat("Failed to send message.")
-
-    def log_chat(self, message):
-        """Log a chat message in the chat box."""
-        print(f"Chat log: {message}")
-        self.chat_box['state'] = 'normal'
-        self.chat_box.insert(tk.END, message + "\n")
-        self.chat_box['state'] = 'disabled'
-        self.chat_box.see(tk.END)
 
     def receive_data(self):
         """Receive data from the opponent."""
@@ -228,13 +265,52 @@ class TicTacToeEnhanced:
                 self.log_chat("Disconnected from opponent.")
                 break
 
+    # -------------------- Chat --------------------
+
+    def send_chat(self, event):
+        """Send a chat message to the opponent."""
+        msg = self.chat_entry.get()
+        if msg and self.connection:
+            try:
+                print(f"Sending chat message: {msg}")
+                self.connection.send(f"CHAT:{msg}".encode())
+                self.log_chat(f"You: {msg}")
+                self.chat_entry.delete(0, tk.END)
+            except Exception as e:
+                print(f"Failed to send chat message: {e}")
+                self.log_chat("Failed to send message.")
+
+    def log_chat(self, message):
+        """Log a chat message in the chat box."""
+        print(f"Chat log: {message}")
+        self.chat_box['state'] = 'normal'
+        self.chat_box.insert(tk.END, message + "\n")
+        self.chat_box['state'] = 'disabled'
+        self.chat_box.see(tk.END)
+
+    # -------------------- Miscellaneous --------------------
+
+    def prompt_host_or_client(self):
+        """Prompt the user to choose if they are the host or client."""
+        is_host = messagebox.askyesno("Host or Client", "Are you the host?")
+        if is_host:
+            self.is_host = True
+            host_ip = socket.gethostbyname(socket.gethostname())
+            print(f"Host IP: {host_ip}")
+            self.log_chat(f"Your IP address is: {host_ip}. Share this with your opponent.")
+            messagebox.showinfo("Host Information", f"Your IP address is: {host_ip}\nShare this with your opponent.")
+        else:
+            self.is_host = False
+            self.master.after(0, self.ask_for_ip)
+
+
 def show_splash_screen():
     """Display a splash screen before launching the main game."""
     splash = tk.Tk()
     splash.title("Welcome")
     splash.configure(bg="#1e1e2f")
     splash.geometry("400x300")
-    splash.overrideredirect(True)  # Remove window decorations
+    splash.overrideredirect(True)
 
     # Add a fancy label for the game name
     tk.Label(splash, text="Tic Tac Toe", font=("Helvetica", 32, "bold"), fg="white", bg="#1e1e2f").pack(pady=50)
@@ -244,12 +320,13 @@ def show_splash_screen():
     tk.Label(splash, text="Loading...", font=("Helvetica", 12), fg="white", bg="#1e1e2f").pack(pady=20)
 
     # Display the splash screen for 3 seconds
-    splash.after(3000, splash.destroy)  # Close the splash screen after 3 seconds
+    splash.after(3000, splash.destroy)
     splash.mainloop()
+
 
 if __name__ == "__main__":
     print("Starting the application...")
-    show_splash_screen()  # Show the splash screen
+    show_splash_screen()
     root = tk.Tk()
     game = TicTacToeEnhanced(root)
     root.mainloop()
